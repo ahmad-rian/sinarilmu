@@ -124,16 +124,16 @@ const About = () => {
   ];
 
   return (
-    <div className="bg-white dark:bg-gray-900 pt-16 overflow-x-hidden">
+    <div className="w-full bg-white dark:bg-gray-900 pt-16" style={{ minHeight: '100vh', overflowX: 'hidden', overflowY: 'auto' }}>
       {/* Hero Section */}
-      <section className="relative py-8 sm:py-12 lg:py-16 xl:py-24">
+      <section className="relative py-8 sm:py-12 lg:py-16 xl:py-24 w-full">
         {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900" style={{ overflow: 'hidden' }}>
           <div className="absolute top-4 sm:top-8 lg:top-16 right-4 sm:right-8 lg:right-20 w-24 h-24 sm:w-32 sm:h-32 lg:w-48 lg:h-48 xl:w-96 xl:h-96 bg-primary-100/20 dark:bg-primary-900/10 rounded-full blur-2xl"></div>
           <div className="absolute bottom-4 sm:bottom-8 lg:bottom-16 left-4 sm:left-8 lg:left-20 w-20 h-20 sm:w-28 sm:h-28 lg:w-40 lg:h-40 xl:w-80 xl:h-80 bg-secondary-100/20 dark:bg-secondary-900/10 rounded-full blur-2xl"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -191,8 +191,8 @@ const About = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-6 sm:py-8 lg:py-12 xl:py-20 bg-white dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-6 sm:py-8 lg:py-12 xl:py-20 bg-white dark:bg-gray-900 w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
             {stats.map((stat, index) => (
               <motion.div
