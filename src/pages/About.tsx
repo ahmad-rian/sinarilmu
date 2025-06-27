@@ -146,7 +146,7 @@ const About = () => {
               <div className="flex justify-center mb-8">
                 <div className="w-24 h-24 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-3xl flex items-center justify-center shadow-2xl">
                   <img 
-                    src="/public/assets/icons/logo.png" 
+                    src="/assets/icons/logo.png" 
                     alt="SinarIlmu Logo" 
                     className="w-16 h-16 object-contain"
                     onError={(e) => {

@@ -225,7 +225,7 @@ const Learn = () => {
             <motion.div variants={itemVariants} className="mb-8">
               <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-secondary-400 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl">
                 <img 
-                  src="/public/assets/icons/logo.png" 
+                  src="/assets/icons/logo.png" 
                   alt="SinarIlmu Logo" 
                   className="w-12 h-12 object-contain"
                   onError={(e) => {
