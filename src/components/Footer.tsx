@@ -132,7 +132,7 @@ const Footer = () => {
             </div>
 
             {/* Footer Links */}
-            {footerSections.map((section, index) => (
+            {footerSections.map((section) => (
               <div key={section.title} className="lg:col-span-1 text-center sm:text-left">
                 <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-heading uppercase tracking-wider mb-4 sm:mb-6 relative inline-block">
                   {section.title}
