@@ -8,7 +8,7 @@ import Schools from './pages/Schools';
 import Community from './pages/Community';
 
 import NotFound from './pages/NotFound';
-import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/react";
 
 function App() {
   return (
