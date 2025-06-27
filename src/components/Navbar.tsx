@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import ThemeToggle from './ThemeToggle'; // Import the separate ThemeToggle component
+import ThemeToggle from './ThemeToggle';
 
 // Types
 interface NavItem {
@@ -15,7 +16,7 @@ const navigation: NavItem[] = [
   { name: 'Pembelajaran', href: '/learn' },
   { name: 'Sekolah Mitra', href: '/schools' },
   { name: 'Komunitas', href: '/community' },
-  { name: 'Bantuan', href: '/help' },
+//   { name: 'Bantuan', href: '/help' },
 ];
 
 // Logo Component
@@ -24,16 +25,27 @@ const Logo = ({ onClick }: { onClick: () => void }) => (
     onClick={onClick}
     className="flex items-center group transition-transform duration-200 hover:scale-105"
   >
-    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-yellow-400 rounded-lg flex items-center justify-center mr-3 shadow-lg">
-      <span className="text-white font-bold text-lg font-['Plus_Jakarta_Sans']">
+    <img 
+      src="/assets/icons/logo.png" 
+      alt="SinarIlmu Logo"
+      className="w-12 h-12 object-cover mr-3"
+      onError={(e) => {
+        const target = e.target as HTMLImageElement;
+        target.style.display = 'none';
+        const fallback = target.nextElementSibling as HTMLElement;
+        if (fallback) fallback.style.display = 'flex';
+      }}
+    />
+    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg hidden items-center justify-center mr-3 shadow-lg">
+      <span className="text-white font-bold text-xl font-heading">
         S
       </span>
     </div>
     <div className="flex flex-col">
-      <h1 className="text-xl font-bold font-['Plus_Jakarta_Sans'] bg-gradient-to-r from-blue-500 to-yellow-400 bg-clip-text text-transparent">
-        SinarIlmu
+      <h1 className="text-xl font-bold font-heading text-gray-900 dark:text-white">
+       SINAR ILMU
       </h1>
-      <p className="text-xs text-gray-500 dark:text-gray-400 font-['Nunito'] -mt-1">
+      <p className="text-xs text-gray-500 dark:text-gray-400 font-body -mt-1">
         Desa Cerdas Digital
       </p>
     </div>
@@ -52,9 +64,9 @@ const DesktopNavItem = ({
 }) => (
   <button
     onClick={onClick}
-    className={`px-6 py-2 rounded-full text-sm font-medium font-['Plus_Jakarta_Sans'] transition-all duration-200 hover:scale-105 ${
+    className={`px-6 py-2 rounded-full text-sm font-medium font-heading transition-all duration-200 hover:scale-105 ${
       isActive
-        ? 'bg-blue-500 text-white shadow-lg hover:bg-blue-600'
+        ? 'bg-primary-500 text-white shadow-lg hover:bg-primary-600'
         : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
     }`}
   >
@@ -74,9 +86,9 @@ const MobileNavItem = ({
 }) => (
   <button
     onClick={onClick}
-    className={`w-full text-left px-4 py-3 rounded-lg font-medium font-['Plus_Jakarta_Sans'] transition-all duration-200 hover:translate-x-2 ${
+    className={`w-full text-left px-4 py-3 rounded-lg font-medium font-heading transition-all duration-200 hover:translate-x-2 ${
       isActive
-        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border-l-4 border-blue-500'
+        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-300 border-l-4 border-primary-500'
         : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
     }`}
   >
@@ -85,7 +97,8 @@ const MobileNavItem = ({
 );
 
 const Navbar = () => {
-  const [currentPath, setCurrentPath] = useState('/');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -99,12 +112,17 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
   const isActive = (href: string) => {
-    return href === '/' ? currentPath === href : currentPath.startsWith(href);
+    return href === '/' ? location.pathname === href : location.pathname.startsWith(href);
   };
 
   const handleNavigation = (href: string) => {
-    setCurrentPath(href);
+    navigate(href);
     setIsMobileMenuOpen(false);
   };
 
@@ -156,7 +174,7 @@ const Navbar = () => {
               <div className="lg:hidden">
                 <button
                   onClick={toggleMobileMenu}
-                  className="relative inline-flex items-center justify-center rounded-md p-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="relative inline-flex items-center justify-center rounded-md p-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                 >
                   <span className="sr-only">Open main menu</span>
                   {isMobileMenuOpen ? (
@@ -188,11 +206,11 @@ const Navbar = () => {
                 <div className="px-4 py-6 space-y-1">
                   {/* Current page indicator */}
                   <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-['Nunito']">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 font-body">
                       Halaman Aktif:
                     </p>
-                    <p className="text-lg font-semibold text-blue-600 dark:text-blue-400 font-['Plus_Jakarta_Sans']">
-                      {navigation.find(item => item.href === currentPath)?.name || 'Beranda'}
+                    <p className="text-lg font-semibold text-primary-600 dark:text-primary-400 font-heading">
+                      {navigation.find(item => item.href === location.pathname)?.name || 'Beranda'}
                     </p>
                   </div>
 
@@ -208,12 +226,7 @@ const Navbar = () => {
                     ))}
                   </div>
 
-                  {/* Mobile theme toggle */}
-                  <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex justify-center">
-                      <ThemeToggle size="md" />
-                    </div>
-                  </div>
+                  
                 </div>
               </div>
             </motion.div>
