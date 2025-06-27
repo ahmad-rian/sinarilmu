@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 
-
 import Home from './pages/Home';
 import About from './pages/About';
 import Learn from './pages/Learn';
@@ -9,6 +8,7 @@ import Schools from './pages/Schools';
 import Community from './pages/Community';
 
 import NotFound from './pages/NotFound';
+import { Analytics } from "@vercel/analytics/next";
 
 function App() {
   return (
@@ -20,11 +20,9 @@ function App() {
           <Route path="/learn" element={<Learn />} />
           <Route path="/schools" element={<Schools />} />
           <Route path="/community" element={<Community />} />
-          
-          
-          
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <Analytics />
       </Layout>
     </Router>
   );
