@@ -1,5 +1,5 @@
 // src/config/apiConfig.js
-// FIXED: Konfigurasi API yang kompatibel dengan Grok API + Clean Response Handling
+// SECURE: Konfigurasi API yang aman tanpa hardcoded secrets
 
 // Environment configuration untuk Vite
 export const ENV_CONFIG = {
@@ -21,7 +21,11 @@ export const ENV_CONFIG = {
 
 // Mendapatkan environment variables dari Vite
 const getEnvVar = (key, defaultValue = '') => {
-  return import.meta.env[key] || defaultValue;
+  const value = import.meta.env[key];
+  if (!value && defaultValue === '' && key.includes('API_KEY')) {
+    console.warn(`⚠️ Environment variable ${key} is not set. Please configure it in your environment.`);
+  }
+  return value || defaultValue;
 };
 
 // Helper function untuk mendapatkan current website URL
@@ -32,10 +36,10 @@ function getCurrentWebsiteUrl() {
     : getEnvVar('VITE_WEBSITE_URL_PROD', 'https://sinarilmu.vercel.app');
 }
 
-// FIXED: Grok API Configuration - Force use correct model
+// SECURE: Grok API Configuration - No hardcoded API keys
 export const GROK_API_CONFIG = {
-  // API Key dari environment variables
-  apiKey: getEnvVar('VITE_GROK_API_KEY', 'REMOVED_API_KEY'),
+  // API Key dari environment variables - SECURE
+  apiKey: getEnvVar('VITE_GROK_API_KEY'),
   
   // Base URL
   baseURL: getEnvVar('VITE_GROK_API_URL', 'https://api.groq.com/openai/v1'),
@@ -49,12 +53,12 @@ export const GROK_API_CONFIG = {
     llama3_8b_legacy: 'llama3-8b-8192'
   },
   
-  // FORCED: Always use active model, ignore env vars if they contain deprecated models
-  defaultModel: 'llama-3.1-8b-instant', // Hard-coded to prevent deprecated model usage
+  // Default model - Always use active model
+  defaultModel: getEnvVar('VITE_GROK_DEFAULT_MODEL', 'llama-3.1-8b-instant'),
   
-  // FIXED: API settings - Only supported parameters for Grok
+  // API settings - Only supported parameters for Grok
   settings: {
-    maxTokens: parseInt(getEnvVar('VITE_GROK_MAX_TOKENS', '2000')), // Increased for better responses
+    maxTokens: parseInt(getEnvVar('VITE_GROK_MAX_TOKENS', '2000')),
     temperature: parseFloat(getEnvVar('VITE_GROK_TEMPERATURE', '0.7')),
     topP: 1.0,
     stream: false
@@ -124,7 +128,7 @@ export const SINARILMU_INFO = {
   }
 };
 
-// FIXED: AI Context - Clean and professional
+// AI Context - Clean and professional
 export const SINARILMU_AI_CONTEXT = {
   systemPrompt: `Kamu adalah Garuda, AI Assistant untuk SinarIlmu - Platform Pembelajaran Digital Desa Cerdas terdepan di Indonesia.
 
@@ -168,7 +172,7 @@ TONE & STYLE:
   }
 };
 
-// FIXED: Response cleaner function - preserve line breaks
+// Response cleaner function - preserve line breaks
 export const cleanApiResponse = (response) => {
   if (!response || typeof response !== 'string') {
     return "Maaf, saya tidak bisa memproses permintaan itu. Coba tanya hal lain! 😊";
@@ -194,7 +198,7 @@ export const cleanApiResponse = (response) => {
     .trim();
 };
 
-// FIXED: API Client with enhanced error handling and clean responses
+// API Client with enhanced error handling and clean responses
 export class SinarIlmuApiClient {
   constructor() {
     this.isDev = import.meta.env.DEV;
@@ -203,6 +207,16 @@ export class SinarIlmuApiClient {
       requests: 0,
       lastReset: Date.now()
     };
+  }
+
+  // Check if API key is available
+  checkApiKey() {
+    const apiKey = GROK_API_CONFIG.apiKey;
+    if (!apiKey || apiKey.trim() === '') {
+      console.error('❌ Groq API Key is not configured. Please set VITE_GROK_API_KEY in your environment variables.');
+      return false;
+    }
+    return true;
   }
 
   // Rate limiting check
@@ -225,15 +239,23 @@ export class SinarIlmuApiClient {
 
   async makeGrokRequest(message, context = '', options = {}) {
     try {
+      // Check if API key is configured
+      if (!this.checkApiKey()) {
+        return {
+          success: false,
+          error: 'API key not configured',
+          response: this.getFallbackResponse(message)
+        };
+      }
+
       // Check rate limiting
       this.checkRateLimit();
 
-      // FORCE correct model - ignore any deprecated model in options
-      const modelToUse = GROK_API_CONFIG.defaultModel; // Always use llama-3.1-8b-instant
+      const modelToUse = GROK_API_CONFIG.defaultModel;
       
       console.log(`🚀 Making Grok API request with model: ${modelToUse}`);
 
-      // FIXED: Request body with forced correct model
+      // Request body with secure API key
       const requestConfig = {
         method: 'POST',
         headers: {
@@ -241,7 +263,7 @@ export class SinarIlmuApiClient {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: modelToUse, // Force use correct model
+          model: modelToUse,
           messages: [
             { 
               role: 'system', 
@@ -278,7 +300,7 @@ export class SinarIlmuApiClient {
       const data = await response.json();
       let responseText = data.choices[0]?.message?.content || 'Maaf, tidak ada respons dari AI.';
       
-      // FIXED: Clean the response to remove formatting issues
+      // Clean the response to remove formatting issues
       responseText = cleanApiResponse(responseText);
       
       console.log('✅ Grok API request successful');
