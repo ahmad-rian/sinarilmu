@@ -1,12 +1,15 @@
-import type { ReactNode } from 'react';
+
+import React, { ReactNode } from 'react';
 import Navbar from '../Navbar';
 import Footer from '../Footer';
+import GarudaChat from '../Chat/GarudaChat';
 
+// Tambahkan type untuk props children
 interface LayoutProps {
   children: ReactNode;
 }
 
-const Layout = ({ children }: LayoutProps) => {
+const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
       {/* Navbar */}
@@ -19,6 +22,9 @@ const Layout = ({ children }: LayoutProps) => {
       
       {/* Footer */}
       <Footer />
+      
+      {/* Chat Garuda AI */}
+      <GarudaChat />
     </div>
   );
 };
