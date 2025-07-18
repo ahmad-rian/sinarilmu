@@ -1,8 +1,115 @@
-// src/config/apiConfig.js
+// src/config/apiConfig.ts
 // SECURE: Konfigurasi API yang aman tanpa hardcoded secrets
 
+// Types
+interface EnvConfig {
+  development: {
+    API_BASE_URL: string;
+    WEBSITE_URL: string;
+    GROK_API_URL: string;
+    DEBUG_MODE: boolean;
+    LOG_LEVEL: string;
+  };
+  production: {
+    API_BASE_URL: string;
+    WEBSITE_URL: string;
+    GROK_API_URL: string;
+    DEBUG_MODE: boolean;
+    LOG_LEVEL: string;
+  };
+}
+
+interface GrokApiConfig {
+  apiKey: string;
+  baseURL: string;
+  models: {
+    llama3_70b: string;
+    llama3_8b: string;
+    gemma2: string;
+    llama3_70b_legacy: string;
+    llama3_8b_legacy: string;
+  };
+  defaultModel: string;
+  settings: {
+    maxTokens: number;
+    temperature: number;
+    topP: number;
+    stream: boolean;
+  };
+  rateLimits: {
+    requestsPerMinute: number;
+    requestsPerHour: number;
+    requestsPerDay: number;
+  };
+  timeout: {
+    connection: number;
+    response: number;
+  };
+  retry: {
+    maxAttempts: number;
+    backoffMultiplier: number;
+    initialDelay: number;
+  };
+}
+
+interface SinarIlmuInfo {
+  nama: string;
+  tagline: string;
+  deskripsi: string;
+  lokasi: {
+    desa: string;
+    kecamatan: string;
+    kabupaten: string;
+    provinsi: string;
+    koordinat: string;
+  };
+  demografis: {
+    populasi_desa: number;
+    jumlah_sekolah_mitra: number;
+    total_siswa: number;
+    sekolah_mitra: string[];
+  };
+  pencapaian: {
+    engagement_rate: string;
+    peningkatan_nilai: string;
+    waktu_belajar: string;
+    kepuasan_guru: string;
+    kepuasan_orangtua: string;
+  };
+  kontak: {
+    website: string;
+    email: string;
+    whatsapp: string;
+    alamat: string;
+    jam_operasional: string;
+  };
+}
+
+interface SinarIlmuAiContext {
+  systemPrompt: string;
+  academicPrompts: {
+    matematika: string;
+    ipa: string;
+    ips: string;
+    umum: string;
+  };
+}
+
+interface ApiResponse {
+  success: boolean;
+  response: string;
+  usage?: any;
+  model?: string;
+  error?: string;
+}
+
+interface RateLimitTracker {
+  requests: number;
+  lastReset: number;
+}
+
 // Environment configuration untuk Vite
-export const ENV_CONFIG = {
+export const ENV_CONFIG: EnvConfig = {
   development: {
     API_BASE_URL: 'http://localhost:5173/api',
     WEBSITE_URL: 'http://localhost:5173',
@@ -20,7 +127,7 @@ export const ENV_CONFIG = {
 };
 
 // Mendapatkan environment variables dari Vite
-const getEnvVar = (key, defaultValue = '') => {
+const getEnvVar = (key: string, defaultValue: string = ''): string => {
   const value = import.meta.env[key];
   if (!value && defaultValue === '' && key.includes('API_KEY')) {
     console.warn(`⚠️ Environment variable ${key} is not set. Please configure it in your environment.`);
@@ -29,7 +136,7 @@ const getEnvVar = (key, defaultValue = '') => {
 };
 
 // Helper function untuk mendapatkan current website URL
-function getCurrentWebsiteUrl() {
+function getCurrentWebsiteUrl(): string {
   const isDev = import.meta.env.DEV;
   return isDev 
     ? getEnvVar('VITE_WEBSITE_URL_DEV', 'http://localhost:5173')
@@ -37,7 +144,7 @@ function getCurrentWebsiteUrl() {
 }
 
 // SECURE: Grok API Configuration - No hardcoded API keys
-export const GROK_API_CONFIG = {
+export const GROK_API_CONFIG: GrokApiConfig = {
   // API Key dari environment variables - SECURE
   apiKey: getEnvVar('VITE_GROK_API_KEY'),
   
@@ -86,7 +193,7 @@ export const GROK_API_CONFIG = {
 };
 
 // SINARILMU Platform Information
-export const SINARILMU_INFO = {
+export const SINARILMU_INFO: SinarIlmuInfo = {
   nama: getEnvVar('VITE_PLATFORM_NAME', 'SinarIlmu'),
   tagline: getEnvVar('VITE_PLATFORM_TAGLINE', 'Platform Pembelajaran Digital Desa Cerdas'),
   deskripsi: "Platform pembelajaran digital inovatif yang dirancang khusus untuk mewujudkan Desa Cerdas melalui teknologi pendidikan modern",
@@ -129,7 +236,7 @@ export const SINARILMU_INFO = {
 };
 
 // AI Context - Clean and professional
-export const SINARILMU_AI_CONTEXT = {
+export const SINARILMU_AI_CONTEXT: SinarIlmuAiContext = {
   systemPrompt: `Kamu adalah Garuda, AI Assistant untuk SinarIlmu - Platform Pembelajaran Digital Desa Cerdas terdepan di Indonesia.
 
 IDENTITAS PLATFORM:
@@ -173,7 +280,7 @@ TONE & STYLE:
 };
 
 // Response cleaner function - preserve line breaks
-export const cleanApiResponse = (response) => {
+export const cleanApiResponse = (response: string): string => {
   if (!response || typeof response !== 'string') {
     return "Maaf, saya tidak bisa memproses permintaan itu. Coba tanya hal lain! 😊";
   }
@@ -200,6 +307,10 @@ export const cleanApiResponse = (response) => {
 
 // API Client with enhanced error handling and clean responses
 export class SinarIlmuApiClient {
+  public isDev: boolean;
+  public config: typeof ENV_CONFIG.development | typeof ENV_CONFIG.production;
+  public rateLimitTracker: RateLimitTracker;
+
   constructor() {
     this.isDev = import.meta.env.DEV;
     this.config = this.isDev ? ENV_CONFIG.development : ENV_CONFIG.production;
@@ -210,7 +321,7 @@ export class SinarIlmuApiClient {
   }
 
   // Check if API key is available
-  checkApiKey() {
+  checkApiKey(): boolean {
     const apiKey = GROK_API_CONFIG.apiKey;
     if (!apiKey || apiKey.trim() === '') {
       console.error('❌ Groq API Key is not configured. Please set VITE_GROK_API_KEY in your environment variables.');
@@ -220,7 +331,7 @@ export class SinarIlmuApiClient {
   }
 
   // Rate limiting check
-  checkRateLimit() {
+  checkRateLimit(): void {
     const now = Date.now();
     const timeSinceReset = now - this.rateLimitTracker.lastReset;
     
@@ -237,7 +348,11 @@ export class SinarIlmuApiClient {
     this.rateLimitTracker.requests++;
   }
 
-  async makeGrokRequest(message, context = '', options = {}) {
+  async makeGrokRequest(
+    message: string, 
+    context: string = '', 
+    options: { maxTokens?: number; temperature?: number } = {}
+  ): Promise<ApiResponse> {
     try {
       // Check if API key is configured
       if (!this.checkApiKey()) {
@@ -256,7 +371,7 @@ export class SinarIlmuApiClient {
       console.log(`🚀 Making Grok API request with model: ${modelToUse}`);
 
       // Request body with secure API key
-      const requestConfig = {
+      const requestConfig: RequestInit = {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${GROK_API_CONFIG.apiKey}`,
@@ -313,19 +428,20 @@ export class SinarIlmuApiClient {
       };
 
     } catch (error) {
-      console.error('❌ Grok API request failed:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Grok API request failed:', errorMessage);
 
       // Return fallback response instead of throwing
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
         response: this.getFallbackResponse(message)
       };
     }
   }
 
   // Enhanced fallback responses
-  getFallbackResponse(message) {
+  getFallbackResponse(message: string): string {
     const lowerMessage = message.toLowerCase();
     
     if (lowerMessage.includes('matematika') || lowerMessage.includes('hitung')) {
@@ -348,7 +464,12 @@ export class SinarIlmuApiClient {
   }
 
   // Retry mechanism for failed requests
-  async makeRequestWithRetry(message, context = '', options = {}, attemptNumber = 1) {
+  async makeRequestWithRetry(
+    message: string, 
+    context: string = '', 
+    options: { maxTokens?: number; temperature?: number } = {}, 
+    attemptNumber: number = 1
+  ): Promise<ApiResponse> {
     try {
       return await this.makeGrokRequest(message, context, options);
     } catch (error) {

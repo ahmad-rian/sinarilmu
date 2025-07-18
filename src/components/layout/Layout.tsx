@@ -1,10 +1,11 @@
-
-import React, { ReactNode } from 'react';
+// src/components/layout/Layout.tsx
+import React from 'react';
+import type { ReactNode } from 'react';
 import Navbar from '../Navbar';
 import Footer from '../Footer';
 import GarudaChat from '../Chat/GarudaChat';
 
-// Tambahkan type untuk props children
+// Type untuk props children
 interface LayoutProps {
   children: ReactNode;
 }

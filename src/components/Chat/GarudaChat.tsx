@@ -1,11 +1,12 @@
+// src/components/Chat/GarudaChat.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import type { FormEvent, KeyboardEvent, ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Bot, User, X, MessageCircle, Minimize2, Maximize2, RefreshCw, Zap, Clock, BookOpen, Trophy, Target } from 'lucide-react';
 import { 
   getRuleBasedResponse, 
   preprocessMessage, 
   postprocessResponse, 
-  quickResponses, 
   chatConfig,
   saveChatHistory,
   loadChatHistory,
@@ -14,10 +15,31 @@ import {
   getLearningRecommendations
 } from './ChatUtils';
 
-const GarudaChat = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState([
+// Types
+interface Message {
+  id: number;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: string;
+  category?: string;
+  subject?: string;
+  isError?: boolean;
+}
+
+interface QuickResponseCategories {
+  [key: string]: string[];
+}
+
+interface FallbackResponses {
+  [key: string]: string;
+}
+
+type Subject = 'matematika' | 'ipa' | 'ips' | 'platform' | 'umum';
+
+const GarudaChat: React.FC = () => {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isMinimized, setIsMinimized] = useState<boolean>(false);
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       text: "Halo! Saya Garuda, asisten AI untuk platform SinarIlmu! 🚀 Saya siap membantu kamu belajar Matematika, IPA, IPS, dan berbagai hal menarik lainnya. Mau belajar apa hari ini?",
@@ -26,23 +48,23 @@ const GarudaChat = () => {
       category: 'greeting'
     }
   ]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentSubject, setCurrentSubject] = useState('umum');
-  const [learningStreak, setLearningStreak] = useState(0);
-  const [totalQuestions, setTotalQuestions] = useState(0);
-  const [showRecommendations, setShowRecommendations] = useState(false);
-  const [activeQuickCategory, setActiveQuickCategory] = useState('akademik');
-  const [isMobile, setIsMobile] = useState(false);
+  const [inputMessage, setInputMessage] = useState<string>('');
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [currentSubject, setCurrentSubject] = useState<Subject>('umum');
+  const [learningStreak, setLearningStreak] = useState<number>(0);
+  const [totalQuestions, setTotalQuestions] = useState<number>(0);
+  const [showRecommendations, setShowRecommendations] = useState<boolean>(false);
+  const [activeQuickCategory, setActiveQuickCategory] = useState<string>('akademik');
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
-  const chatStartTime = useRef(Date.now());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const chatStartTime = useRef<number>(Date.now());
 
   // Check if mobile device
   useEffect(() => {
-    const checkMobile = () => {
+    const checkMobile = (): void => {
       setIsMobile(window.innerWidth <= 768);
     };
     
@@ -80,7 +102,7 @@ const GarudaChat = () => {
           streak: learningStreak,
           totalQuestions: userMessages.length,
           lastActivity: new Date().toISOString(),
-          subjects: {}
+          subjects: {} as { [key: string]: number }
         };
         
         // Track subjects discussed
@@ -98,7 +120,7 @@ const GarudaChat = () => {
   }, [messages, learningStreak]);
 
   // Enhanced message handling dengan proper async dan error handling
-  const handleSendMessage = async (e) => {
+  const handleSendMessage = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading) return;
 
@@ -109,7 +131,7 @@ const GarudaChat = () => {
       return;
     }
 
-    const userMessage = {
+    const userMessage: Message = {
       id: Date.now(),
       text: cleanMessage,
       sender: 'user',
@@ -128,7 +150,7 @@ const GarudaChat = () => {
     setInputMessage('');
     setIsTyping(true);
     setIsLoading(true);
-    setCurrentSubject(userMessage.subject);
+    setCurrentSubject(userMessage.subject as Subject);
 
     // Realistic typing delay
     const complexity = Math.min(cleanMessage.length / 10, 10);
@@ -141,19 +163,19 @@ const GarudaChat = () => {
       console.log('Processing message:', cleanMessage);
       
       // Get AI response with fallback
-      let rawResponse;
+      let rawResponse: string;
       try {
         rawResponse = await getRuleBasedResponse(cleanMessage);
       } catch (apiError) {
         console.warn('AI API failed, using fallback:', apiError);
-        rawResponse = getFallbackResponse(cleanMessage, userMessage.subject);
+        rawResponse = getFallbackResponse(cleanMessage, userMessage.subject as Subject);
       }
       
       // Clean up response - remove unnecessary asterisks and formatting issues
       const cleanedResponse = cleanUpResponse(rawResponse);
       const finalResponse = postprocessResponse(cleanedResponse);
       
-      const botMessage = {
+      const botMessage: Message = {
         id: Date.now() + 1,
         text: finalResponse,
         sender: 'bot',
@@ -169,8 +191,8 @@ const GarudaChat = () => {
         trackChatInteraction(cleanMessage, finalResponse);
         
         // Track learning progress for academic subjects
-        if (['matematika', 'ipa', 'ips'].includes(userMessage.subject)) {
-          trackLearningProgress(userMessage.subject, 'general', 'engaged');
+        if (['matematika', 'ipa', 'ips'].includes(userMessage.subject || '')) {
+          trackLearningProgress(userMessage.subject || 'umum', 'general', 'engaged');
           
           // Update streak
           const today = new Date().toDateString();
@@ -193,9 +215,9 @@ const GarudaChat = () => {
       console.error('Error processing message:', error);
       
       // Enhanced error handling with helpful fallback
-      const errorMessage = {
+      const errorMessage: Message = {
         id: Date.now() + 1,
-        text: getErrorMessage(error),
+        text: getErrorMessage(error as Error),
         sender: 'bot',
         timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
         isError: true,
@@ -209,7 +231,7 @@ const GarudaChat = () => {
   };
 
   // Function to clean up response and improve formatting
-  const cleanUpResponse = (response) => {
+  const cleanUpResponse = (response: string): string => {
     if (!response || typeof response !== 'string') {
       return "Maaf, saya tidak bisa memproses permintaan itu. Coba tanya hal lain! 😊";
     }
@@ -232,8 +254,8 @@ const GarudaChat = () => {
   };
 
   // Fallback response when AI fails
-  const getFallbackResponse = (message, subject) => {
-    const fallbackResponses = {
+  const getFallbackResponse = (_message: string, subject: Subject): string => {
+    const fallbackResponses: FallbackResponses = {
       matematika: "Matematika itu seru! Coba tanya saya tentang penjumlahan, pengurangan, perkalian, atau pembagian. Saya juga bisa bantu dengan soal cerita! 🔢",
       ipa: "IPA penuh dengan hal menarik! Tanya saya tentang alam, hewan, tumbuhan, atau eksperimen sederhana yang bisa kamu coba di rumah! 🔬",
       ips: "Mari belajar tentang Indonesia! Saya bisa ceritakan tentang budaya, sejarah, atau keunikan daerah di Indonesia! 🇮🇩",
@@ -245,7 +267,7 @@ const GarudaChat = () => {
   };
 
   // Enhanced error message generator
-  const getErrorMessage = (error) => {
+  const getErrorMessage = (error: Error): string => {
     if (error.message?.includes('fetch')) {
       return "Koneksi internet bermasalah. Tapi jangan khawatir, saya tetap bisa membantu dengan pengetahuan dasar! Coba tanya tentang Matematika, IPA, atau IPS! 📶";
     }
@@ -258,7 +280,7 @@ const GarudaChat = () => {
   };
 
   // Enhanced quick response categories
-  const quickResponseCategories = {
+  const quickResponseCategories: QuickResponseCategories = {
     akademik: [
       "Ajari saya matematika dasar!",
       "Apa itu fotosintesis?",
@@ -285,7 +307,7 @@ const GarudaChat = () => {
     ]
   };
 
-  const handleQuickResponse = (response) => {
+  const handleQuickResponse = (response: string): void => {
     setInputMessage(response);
     if (inputRef.current) {
       inputRef.current.focus();
@@ -293,7 +315,7 @@ const GarudaChat = () => {
   };
 
   // Utility functions
-  const detectSubjectFromMessage = (message) => {
+  const detectSubjectFromMessage = (message: string): Subject => {
     const lowerMessage = message.toLowerCase();
     
     if (lowerMessage.includes('matematika') || lowerMessage.includes('mtk') || lowerMessage.includes('hitung')) return 'matematika';
@@ -304,7 +326,7 @@ const GarudaChat = () => {
     return 'umum';
   };
 
-  const detectResponseCategory = (response) => {
+  const detectResponseCategory = (response: string): string => {
     if (response.includes('matematika') || response.includes('🔢')) return 'matematika';
     if (response.includes('IPA') || response.includes('🔬')) return 'ipa';
     if (response.includes('IPS') || response.includes('🌏')) return 'ips';
@@ -313,7 +335,7 @@ const GarudaChat = () => {
   };
 
   // Auto-scroll to bottom
-  const scrollToBottom = () => {
+  const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -328,8 +350,8 @@ const GarudaChat = () => {
   }, [isOpen]);
 
   // Clear chat function
-  const clearChat = () => {
-    const initialMessage = {
+  const clearChat = (): void => {
+    const initialMessage: Message = {
       id: 1,
       text: "Chat telah direset! Saya Garuda, siap membantu kamu belajar lagi. Ada yang bisa saya bantu? 🚀",
       sender: 'bot',
@@ -344,12 +366,12 @@ const GarudaChat = () => {
   };
 
   // Helper functions for UI
-  const getSessionDuration = () => {
+  const getSessionDuration = (): string => {
     const duration = Math.floor((Date.now() - chatStartTime.current) / 1000 / 60);
-    return duration < 1 ? '<1' : duration;
+    return duration < 1 ? '<1' : duration.toString();
   };
 
-  const getSubjectIcon = (subject) => {
+  const getSubjectIcon = (subject?: string): string => {
     switch(subject) {
       case 'matematika': return '🔢';
       case 'ipa': return '🔬';
@@ -359,7 +381,7 @@ const GarudaChat = () => {
     }
   };
 
-  const getSubjectColor = (subject) => {
+  const getSubjectColor = (subject?: string): string => {
     switch(subject) {
       case 'matematika': return 'text-blue-600 dark:text-blue-400';
       case 'ipa': return 'text-green-600 dark:text-green-400';
@@ -370,7 +392,7 @@ const GarudaChat = () => {
   };
 
   // Format message text with proper line breaks and paragraphs
-  const formatMessageText = (text) => {
+  const formatMessageText = (text: string): ReactElement[] | string => {
     if (!text || typeof text !== 'string') return '';
     
     // Split by multiple line breaks for paragraphs
@@ -390,6 +412,13 @@ const GarudaChat = () => {
         </div>
       );
     });
+  };
+
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e as unknown as FormEvent);
+    }
   };
 
   return (
@@ -632,7 +661,7 @@ const GarudaChat = () => {
                       </button>
                     </div>
                     <div className="space-y-2">
-                      {getLearningRecommendations().slice(0, 2).map((rec, index) => (
+                      {getLearningRecommendations().slice(0, 2).map((rec: string, index: number) => (
                         <p key={index} className="text-xs text-yellow-700 dark:text-yellow-300">
                           • {rec}
                         </p>
@@ -682,18 +711,13 @@ const GarudaChat = () => {
 
                 {/* Enhanced Input Section */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-                  <div onSubmit={handleSendMessage} className="flex gap-2">
+                  <div className="flex gap-2">
                     <input
                       ref={inputRef}
                       type="text"
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage(e);
-                        }
-                      }}
+                      onKeyPress={handleKeyPress}
                       placeholder="Tanya tentang Matematika, IPA, IPS, atau hal lainnya..."
                       className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm disabled:opacity-50"
                       disabled={isLoading}

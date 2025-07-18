@@ -1,8 +1,48 @@
-// src/components/Chat/ChatUtils.js
+// src/components/Chat/ChatUtils.ts
 import { apiClient, SINARILMU_AI_CONTEXT, cleanApiResponse } from '../../config/apiConfig';
 
+// Types
+export interface ChatConfig {
+  maxMessages: number;
+  maxMessageLength: number;
+  typingDelay: {
+    min: number;
+    max: number;
+  };
+  enableQuickResponses: boolean;
+  enableLearningTracking: boolean;
+}
+
+export interface Message {
+  id: number;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: string;
+  category?: string;
+  subject?: string;
+  isError?: boolean;
+}
+
+export interface QuickResponses {
+  [key: string]: string[];
+}
+
+export interface ChatInteraction {
+  timestamp: string;
+  question: string;
+  responseLength: number;
+  subject: string;
+}
+
+export interface LearningProgress {
+  subject: string;
+  topic: string;
+  status: string;
+  timestamp: string;
+}
+
 // Chat configuration
-export const chatConfig = {
+export const chatConfig: ChatConfig = {
   maxMessages: 50,
   maxMessageLength: 500,
   typingDelay: {
@@ -14,7 +54,7 @@ export const chatConfig = {
 };
 
 // Preprocess message function
-export const preprocessMessage = (message) => {
+export const preprocessMessage = (message: string): string => {
   if (!message || typeof message !== 'string') return '';
   
   return message
@@ -24,7 +64,7 @@ export const preprocessMessage = (message) => {
 };
 
 // Postprocess response function - preserve formatting
-export const postprocessResponse = (response) => {
+export const postprocessResponse = (response: string): string => {
   if (!response || typeof response !== 'string') {
     return "Maaf, saya tidak bisa memproses permintaan itu. Coba tanya hal lain! 😊";
   }
@@ -42,7 +82,7 @@ export const postprocessResponse = (response) => {
 };
 
 // Enhanced rule-based response with better subject handling
-export const getRuleBasedResponse = async (message) => {
+export const getRuleBasedResponse = async (message: string): Promise<string> => {
   try {
     const lowerMessage = message.toLowerCase().trim();
     
@@ -101,7 +141,7 @@ export const getRuleBasedResponse = async (message) => {
 };
 
 // Math expression evaluator (safe evaluation)
-const evaluateMathExpression = (expression) => {
+const evaluateMathExpression = (expression: string): string | null => {
   try {
     // Clean the expression
     const cleanExpr = expression
@@ -130,7 +170,7 @@ const evaluateMathExpression = (expression) => {
 };
 
 // Math explanation generator
-const getMathExplanation = (expression, result) => {
+const getMathExplanation = (expression: string, result: string): string => {
   const cleanExpr = expression.replace(/[^0-9+\-*/().\s]/g, '').trim();
   
   if (cleanExpr.includes('*') && (cleanExpr.includes('+') || cleanExpr.includes('-'))) {
@@ -149,7 +189,7 @@ const getMathExplanation = (expression, result) => {
 };
 
 // Math basics response
-const getMathBasicsResponse = () => {
+const getMathBasicsResponse = (): string => {
   return `🔢 **Matematika Dasar untuk SD**
 
 **Operasi Dasar:**
@@ -172,7 +212,7 @@ Mau coba soal lain? Ketik angka dan operasi matematika! 🎯`;
 };
 
 // SinarIlmu platform response - Clean and well-formatted
-const getSinarIlmuResponse = () => {
+const getSinarIlmuResponse = (): string => {
   return `🏫 **SinarIlmu - Platform Pembelajaran Digital Desa Cerdas**
 
 📍 **Lokasi:** Desa Pliken, Kembaran, Banyumas, Jawa Tengah
@@ -194,7 +234,7 @@ Kami bangga mewujudkan Desa Cerdas melalui pendidikan digital yang inovatif! �
 };
 
 // Introduction response
-const getIntroductionResponse = () => {
+const getIntroductionResponse = (): string => {
   return `🤖 **Halo! Saya Garuda AI**
 
 Saya adalah asisten pembelajaran digital untuk platform SinarIlmu! 🚀
@@ -212,7 +252,7 @@ Saya siap membantu kamu belajar kapan saja! 📚✨`;
 };
 
 // Fotosintesis response
-const getFotosintesisResponse = () => {
+const getFotosintesisResponse = (): string => {
   return `🌱 **Fotosintesis - Cara Tumbuhan Membuat Makanan**
 
 **Apa itu Fotosintesis?**
@@ -238,7 +278,7 @@ Mau tahu lebih banyak tentang IPA lainnya? 🔬`;
 };
 
 // IPA response
-const getIPAResponse = () => {
+const getIPAResponse = (): string => {
   return `🔬 **IPA (Ilmu Pengetahuan Alam) Seru!**
 
 **Topik Menarik:**
@@ -256,7 +296,7 @@ Mau belajar topik IPA yang mana? 🧪`;
 };
 
 // IPS response
-const getIPSResponse = () => {
+const getIPSResponse = (): string => {
   return `🌏 **IPS (Ilmu Pengetahuan Sosial) Indonesia**
 
 **Kebanggaan Indonesia:**
@@ -274,7 +314,7 @@ Indonesia Tanah Airku! Mau tahu lebih banyak tentang daerah mana? 🗺️`;
 };
 
 // General response
-const getGeneralResponse = (message) => {
+const getGeneralResponse = (_message: string): string => {
   const responses = [
     "Halo! Saya Garuda dari SinarIlmu! 🚀 Tanya saja tentang Matematika, IPA, IPS, atau platform kami!",
     "Sebagai AI pembelajaran dari Desa Pliken, saya siap membantu! 📚 Mau belajar apa hari ini?",
@@ -286,12 +326,12 @@ const getGeneralResponse = (message) => {
 };
 
 // Error response
-const getErrorResponse = () => {
+const getErrorResponse = (): string => {
   return "Maaf, ada gangguan kecil! 😅 Tapi saya tetap siap membantu belajar Matematika, IPA, IPS, atau cerita tentang SinarIlmu! Coba tanya lagi ya! 🎯";
 };
 
 // Quick responses
-export const quickResponses = {
+export const quickResponses: QuickResponses = {
   akademik: [
     "Ajari saya matematika dasar!",
     "Apa itu fotosintesis?", 
@@ -319,7 +359,7 @@ export const quickResponses = {
 };
 
 // Chat history functions
-export const saveChatHistory = (messages) => {
+export const saveChatHistory = (messages: Message[]): void => {
   try {
     localStorage.setItem('sinarilmu_chat_history', JSON.stringify(messages));
   } catch (error) {
@@ -327,7 +367,7 @@ export const saveChatHistory = (messages) => {
   }
 };
 
-export const loadChatHistory = () => {
+export const loadChatHistory = (): Message[] | null => {
   try {
     const saved = localStorage.getItem('sinarilmu_chat_history');
     return saved ? JSON.parse(saved) : null;
@@ -338,16 +378,16 @@ export const loadChatHistory = () => {
 };
 
 // Learning tracking functions
-export const trackChatInteraction = (question, response) => {
+export const trackChatInteraction = (question: string, response: string): void => {
   try {
-    const interaction = {
+    const interaction: ChatInteraction = {
       timestamp: new Date().toISOString(),
       question: question.substring(0, 100),
       responseLength: response.length,
       subject: detectSubject(question)
     };
     
-    const history = JSON.parse(localStorage.getItem('chat_interactions') || '[]');
+    const history: ChatInteraction[] = JSON.parse(localStorage.getItem('chat_interactions') || '[]');
     history.push(interaction);
     
     // Keep only last 100 interactions
@@ -358,16 +398,16 @@ export const trackChatInteraction = (question, response) => {
   }
 };
 
-export const trackLearningProgress = (subject, topic, status) => {
+export const trackLearningProgress = (subject: string, topic: string, status: string): void => {
   try {
-    const progress = {
+    const progress: LearningProgress = {
       subject,
       topic,
       status,
       timestamp: new Date().toISOString()
     };
     
-    const history = JSON.parse(localStorage.getItem('learning_progress') || '[]');
+    const history: LearningProgress[] = JSON.parse(localStorage.getItem('learning_progress') || '[]');
     history.push(progress);
     
     localStorage.setItem('learning_progress', JSON.stringify(history.slice(-50)));
@@ -376,16 +416,16 @@ export const trackLearningProgress = (subject, topic, status) => {
   }
 };
 
-export const getLearningRecommendations = () => {
+export const getLearningRecommendations = (): string[] => {
   try {
-    const interactions = JSON.parse(localStorage.getItem('chat_interactions') || '[]');
-    const subjects = {};
+    const interactions: ChatInteraction[] = JSON.parse(localStorage.getItem('chat_interactions') || '[]');
+    const subjects: { [key: string]: number } = {};
     
     interactions.forEach(interaction => {
       subjects[interaction.subject] = (subjects[interaction.subject] || 0) + 1;
     });
     
-    const recommendations = [];
+    const recommendations: string[] = [];
     
     if (subjects.matematika >= 3) {
       recommendations.push("Coba latihan soal cerita matematika untuk pemahaman yang lebih dalam!");
@@ -410,7 +450,7 @@ export const getLearningRecommendations = () => {
 };
 
 // Helper function to detect subject
-const detectSubject = (message) => {
+const detectSubject = (message: string): string => {
   const lowerMessage = message.toLowerCase();
   
   if (lowerMessage.includes('matematika') || lowerMessage.includes('hitung') || /[0-9+\-*/]/.test(message)) {
