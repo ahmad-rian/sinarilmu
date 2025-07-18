@@ -478,7 +478,7 @@ Maaf, sepertinya ada masalah teknis sebentar.
 • 🔢 Matematika: Operasi dasar, soal cerita
 • 🔬 IPA: Sains menarik, eksperimen
 • 🌏 IPS: Indonesia yang membanggakan
-• 💡 Pengetahuan umum: Teknologi, kesehatan
+• 💡 Pengetahuan umum: teknologi, kesehatan, olahraga
 
 Yuk coba lagi dengan pertanyaan yang lain! 🚀`;
 };
@@ -510,7 +510,7 @@ const analyzeMessageIntent = (message: string): MessageIntent => {
 };
 
 // Intelligent fallback system
-const getIntelligentFallback = (originalMessage: string, lowerMessage: string): string => {
+const getIntelligentFallback = (lowerMessage: string): string => {
   const messageAnalysis = analyzeMessageIntent(lowerMessage);
   
   switch (messageAnalysis.intent) {
@@ -710,7 +710,7 @@ export const getRuleBasedResponse = async (message: string): Promise<string> => 
     }
     
     // 6. Intelligent fallback
-    return getIntelligentFallback(message, lowerMessage);
+    return getIntelligentFallback(lowerMessage);
     
   } catch (error) {
     console.error('Error in getRuleBasedResponse:', error);
