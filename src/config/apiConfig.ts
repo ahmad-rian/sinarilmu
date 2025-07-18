@@ -98,7 +98,11 @@ interface SinarIlmuAiContext {
 interface ApiResponse {
   success: boolean;
   response: string;
-  usage?: any;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
   model?: string;
   error?: string;
 }
@@ -126,27 +130,38 @@ export const ENV_CONFIG: EnvConfig = {
   }
 };
 
-// Mendapatkan environment variables dari Vite
+// Mendapatkan environment variables dari Vite dengan fallback yang aman
 const getEnvVar = (key: string, defaultValue: string = ''): string => {
-  const value = import.meta.env[key];
-  if (!value && defaultValue === '' && key.includes('API_KEY')) {
-    console.warn(`⚠️ Environment variable ${key} is not set. Please configure it in your environment.`);
+  try {
+    const value = import.meta.env[key];
+    if (!value && defaultValue === '' && key.includes('API_KEY')) {
+      if (import.meta.env.DEV) {
+        console.warn(`⚠️ Environment variable ${key} is not set. Using fallback mode.`);
+      }
+    }
+    return value || defaultValue;
+  } catch (error) {
+    console.warn(`Failed to get environment variable ${key}, using default:`, defaultValue);
+    return defaultValue;
   }
-  return value || defaultValue;
 };
 
 // Helper function untuk mendapatkan current website URL
-function getCurrentWebsiteUrl(): string {
-  const isDev = import.meta.env.DEV;
-  return isDev 
-    ? getEnvVar('VITE_WEBSITE_URL_DEV', 'http://localhost:5173')
-    : getEnvVar('VITE_WEBSITE_URL_PROD', 'https://sinarilmu.vercel.app');
-}
+const getCurrentWebsiteUrl = (): string => {
+  try {
+    const isDev = import.meta.env.DEV;
+    return isDev 
+      ? getEnvVar('VITE_WEBSITE_URL_DEV', 'http://localhost:5173')
+      : getEnvVar('VITE_WEBSITE_URL_PROD', 'https://sinarilmu.vercel.app');
+  } catch (error) {
+    return 'https://sinarilmu.vercel.app';
+  }
+};
 
 // SECURE: Grok API Configuration - No hardcoded API keys
 export const GROK_API_CONFIG: GrokApiConfig = {
   // API Key dari environment variables - SECURE
-  apiKey: getEnvVar('VITE_GROK_API_KEY'),
+  apiKey: getEnvVar('VITE_GROK_API_KEY', ''),
   
   // Base URL
   baseURL: getEnvVar('VITE_GROK_API_URL', 'https://api.groq.com/openai/v1'),
@@ -165,17 +180,17 @@ export const GROK_API_CONFIG: GrokApiConfig = {
   
   // API settings - Only supported parameters for Grok
   settings: {
-    maxTokens: parseInt(getEnvVar('VITE_GROK_MAX_TOKENS', '2000')),
-    temperature: parseFloat(getEnvVar('VITE_GROK_TEMPERATURE', '0.7')),
+    maxTokens: Math.min(parseInt(getEnvVar('VITE_GROK_MAX_TOKENS', '2000')), 4096),
+    temperature: Math.max(0, Math.min(parseFloat(getEnvVar('VITE_GROK_TEMPERATURE', '0.7')), 2)),
     topP: 1.0,
     stream: false
   },
   
   // Rate limiting dari environment
   rateLimits: {
-    requestsPerMinute: parseInt(getEnvVar('VITE_API_REQUESTS_PER_MINUTE', '30')),
-    requestsPerHour: parseInt(getEnvVar('VITE_API_REQUESTS_PER_HOUR', '1000')),
-    requestsPerDay: parseInt(getEnvVar('VITE_API_REQUESTS_PER_DAY', '10000'))
+    requestsPerMinute: Math.max(1, parseInt(getEnvVar('VITE_API_REQUESTS_PER_MINUTE', '30'))),
+    requestsPerHour: Math.max(10, parseInt(getEnvVar('VITE_API_REQUESTS_PER_HOUR', '1000'))),
+    requestsPerDay: Math.max(100, parseInt(getEnvVar('VITE_API_REQUESTS_PER_DAY', '10000')))
   },
   
   // Timeout settings
@@ -207,9 +222,9 @@ export const SINARILMU_INFO: SinarIlmuInfo = {
   },
 
   demografis: {
-    populasi_desa: parseInt(getEnvVar('VITE_TOTAL_POPULATION', '9485')),
-    jumlah_sekolah_mitra: parseInt(getEnvVar('VITE_TOTAL_SCHOOLS', '4')),
-    total_siswa: parseInt(getEnvVar('VITE_TOTAL_STUDENTS', '813')),
+    populasi_desa: Math.max(0, parseInt(getEnvVar('VITE_TOTAL_POPULATION', '9485'))),
+    jumlah_sekolah_mitra: Math.max(0, parseInt(getEnvVar('VITE_TOTAL_SCHOOLS', '4'))),
+    total_siswa: Math.max(0, parseInt(getEnvVar('VITE_TOTAL_STUDENTS', '813'))),
     sekolah_mitra: [
       "SDN 1 Pliken - 210 siswa",
       "SDN 2 Pliken - 198 siswa", 
@@ -272,10 +287,10 @@ TONE & STYLE:
 - Gunakan format yang bersih dan mudah dibaca`,
 
   academicPrompts: {
-    matematika: "Fokus pada konsep matematika dasar SD dengan contoh konkret dan step-by-step explanation.",
-    ipa: "Jelaskan konsep IPA dengan cara menarik dan eksperimen sederhana.",
-    ips: "Ceritakan tentang Indonesia dan budaya dengan bangga.",
-    umum: "Jawab dengan antusias dan kaitkan dengan semangat belajar."
+    matematika: "Fokus pada konsep matematika dasar SD dengan contoh konkret dan step-by-step explanation yang mudah dipahami.",
+    ipa: "Jelaskan konsep IPA dengan cara menarik menggunakan eksperimen sederhana dan contoh kehidupan sehari-hari.",
+    ips: "Ceritakan tentang Indonesia dan budaya dengan bangga, sertakan fakta menarik dan nilai-nilai kebangsaan.",
+    umum: "Jawab dengan antusias dan kaitkan dengan semangat belajar, berikan motivasi positif."
   }
 };
 
@@ -285,24 +300,29 @@ export const cleanApiResponse = (response: string): string => {
     return "Maaf, saya tidak bisa memproses permintaan itu. Coba tanya hal lain! 😊";
   }
 
-  return response
-    // Remove excessive asterisks and markdown formatting but preserve line breaks
-    .replace(/\*{3,}/g, '') // Remove 3+ asterisks
-    .replace(/\*{2}([^*]+)\*{2}/g, '**$1**') // Keep bold formatting
-    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '$1') // Remove single asterisks but not bold
-    // Clean up extra spaces but preserve intentional line breaks
-    .replace(/ +/g, ' ') // Multiple spaces to single space
-    .replace(/\n +/g, '\n') // Remove spaces after line breaks
-    .replace(/ +\n/g, '\n') // Remove spaces before line breaks
-    // Preserve double line breaks for proper formatting
-    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive line breaks
-    // Remove formatting artifacts
-    .replace(/^[*\-\s]+/gm, '') // Remove leading asterisks/dashes from lines
-    .replace(/[*\-\s]+$/gm, '') // Remove trailing asterisks/dashes from lines
-    // Clean up bullet points
-    .replace(/^\s*[\-\*]\s*/gm, '• ') // Standardize bullet points
-    // Trim whitespace but preserve structure
-    .trim();
+  try {
+    return response
+      // Remove excessive asterisks and markdown formatting but preserve line breaks
+      .replace(/\*{3,}/g, '') // Remove 3+ asterisks
+      .replace(/\*{2}([^*]+)\*{2}/g, '**$1**') // Keep bold formatting
+      .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '$1') // Remove single asterisks but not bold
+      // Clean up extra spaces but preserve intentional line breaks
+      .replace(/ +/g, ' ') // Multiple spaces to single space
+      .replace(/\n +/g, '\n') // Remove spaces after line breaks
+      .replace(/ +\n/g, '\n') // Remove spaces before line breaks
+      // Preserve double line breaks for proper formatting
+      .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive line breaks
+      // Remove formatting artifacts
+      .replace(/^[*\-\s]+/gm, '') // Remove leading asterisks/dashes from lines
+      .replace(/[*\-\s]+$/gm, '') // Remove trailing asterisks/dashes from lines
+      // Clean up bullet points
+      .replace(/^\s*[\-\*]\s*/gm, '• ') // Standardize bullet points
+      // Trim whitespace but preserve structure
+      .trim();
+  } catch (error) {
+    console.warn('Error cleaning response:', error);
+    return response.trim();
+  }
 };
 
 // API Client with enhanced error handling and clean responses
@@ -312,8 +332,15 @@ export class SinarIlmuApiClient {
   public rateLimitTracker: RateLimitTracker;
 
   constructor() {
-    this.isDev = import.meta.env.DEV;
-    this.config = this.isDev ? ENV_CONFIG.development : ENV_CONFIG.production;
+    try {
+      this.isDev = import.meta.env.DEV;
+      this.config = this.isDev ? ENV_CONFIG.development : ENV_CONFIG.production;
+    } catch (error) {
+      // Fallback if import.meta.env is not available
+      this.isDev = false;
+      this.config = ENV_CONFIG.production;
+    }
+    
     this.rateLimitTracker = {
       requests: 0,
       lastReset: Date.now()
@@ -324,28 +351,37 @@ export class SinarIlmuApiClient {
   checkApiKey(): boolean {
     const apiKey = GROK_API_CONFIG.apiKey;
     if (!apiKey || apiKey.trim() === '') {
-      console.error('❌ Groq API Key is not configured. Please set VITE_GROK_API_KEY in your environment variables.');
+      if (this.isDev) {
+        console.warn('⚠️ Groq API Key is not configured. Using fallback mode.');
+      }
       return false;
     }
     return true;
   }
 
   // Rate limiting check
-  checkRateLimit(): void {
-    const now = Date.now();
-    const timeSinceReset = now - this.rateLimitTracker.lastReset;
-    
-    // Reset counter every minute
-    if (timeSinceReset > 60000) {
-      this.rateLimitTracker.requests = 0;
-      this.rateLimitTracker.lastReset = now;
+  checkRateLimit(): boolean {
+    try {
+      const now = Date.now();
+      const timeSinceReset = now - this.rateLimitTracker.lastReset;
+      
+      // Reset counter every minute
+      if (timeSinceReset > 60000) {
+        this.rateLimitTracker.requests = 0;
+        this.rateLimitTracker.lastReset = now;
+      }
+      
+      if (this.rateLimitTracker.requests >= GROK_API_CONFIG.rateLimits.requestsPerMinute) {
+        console.warn('Rate limit exceeded. Please wait a moment before trying again.');
+        return false;
+      }
+      
+      this.rateLimitTracker.requests++;
+      return true;
+    } catch (error) {
+      console.warn('Error checking rate limit:', error);
+      return true; // Allow request if rate limit check fails
     }
-    
-    if (this.rateLimitTracker.requests >= GROK_API_CONFIG.rateLimits.requestsPerMinute) {
-      throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
-    }
-    
-    this.rateLimitTracker.requests++;
   }
 
   async makeGrokRequest(
@@ -354,6 +390,15 @@ export class SinarIlmuApiClient {
     options: { maxTokens?: number; temperature?: number } = {}
   ): Promise<ApiResponse> {
     try {
+      // Validate input
+      if (!message || typeof message !== 'string' || message.trim() === '') {
+        return {
+          success: false,
+          error: 'Invalid message',
+          response: this.getFallbackResponse('invalid')
+        };
+      }
+
       // Check if API key is configured
       if (!this.checkApiKey()) {
         return {
@@ -364,38 +409,50 @@ export class SinarIlmuApiClient {
       }
 
       // Check rate limiting
-      this.checkRateLimit();
+      if (!this.checkRateLimit()) {
+        return {
+          success: false,
+          error: 'Rate limit exceeded',
+          response: 'Maaf, terlalu banyak permintaan. Silakan tunggu sebentar dan coba lagi! 😊'
+        };
+      }
 
       const modelToUse = GROK_API_CONFIG.defaultModel;
       
-      console.log(`🚀 Making Grok API request with model: ${modelToUse}`);
+      if (this.isDev) {
+        console.log(`🚀 Making Grok API request with model: ${modelToUse}`);
+      }
 
-      // Request body with secure API key
+      // Prepare request body with validation
+      const requestBody = {
+        model: modelToUse,
+        messages: [
+          { 
+            role: 'system', 
+            content: context || SINARILMU_AI_CONTEXT.systemPrompt 
+          },
+          { 
+            role: 'user', 
+            content: message.trim().substring(0, 2000) // Limit message length
+          }
+        ],
+        max_tokens: Math.min(options.maxTokens || GROK_API_CONFIG.settings.maxTokens, 4096),
+        temperature: Math.max(0, Math.min(options.temperature || GROK_API_CONFIG.settings.temperature, 2)),
+        top_p: GROK_API_CONFIG.settings.topP,
+        stream: GROK_API_CONFIG.settings.stream
+      };
+
+      // Request configuration
       const requestConfig: RequestInit = {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${GROK_API_CONFIG.apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: modelToUse,
-          messages: [
-            { 
-              role: 'system', 
-              content: context || SINARILMU_AI_CONTEXT.systemPrompt 
-            },
-            { 
-              role: 'user', 
-              content: message 
-            }
-          ],
-          max_tokens: options.maxTokens || GROK_API_CONFIG.settings.maxTokens,
-          temperature: options.temperature || GROK_API_CONFIG.settings.temperature,
-          top_p: GROK_API_CONFIG.settings.topP,
-          stream: GROK_API_CONFIG.settings.stream
-        }),
+        body: JSON.stringify(requestBody),
       };
 
+      // Add timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), GROK_API_CONFIG.timeout.response);
 
@@ -406,19 +463,33 @@ export class SinarIlmuApiClient {
 
       clearTimeout(timeoutId);
 
+      // Handle HTTP errors
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error('API Error:', response.status, errorText);
+        
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${errorText}`,
+          response: this.getFallbackResponse(message)
+        };
       }
 
+      // Parse response
       const data = await response.json();
-      let responseText = data.choices[0]?.message?.content || 'Maaf, tidak ada respons dari AI.';
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response format from API');
+      }
+
+      let responseText = data.choices[0].message.content || 'Maaf, tidak ada respons dari AI.';
       
       // Clean the response to remove formatting issues
       responseText = cleanApiResponse(responseText);
       
-      console.log('✅ Grok API request successful');
+      if (this.isDev) {
+        console.log('✅ Grok API request successful');
+      }
 
       return {
         success: true,
@@ -429,7 +500,10 @@ export class SinarIlmuApiClient {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('❌ Grok API request failed:', errorMessage);
+      
+      if (this.isDev) {
+        console.error('❌ Grok API request failed:', errorMessage);
+      }
 
       // Return fallback response instead of throwing
       return {
@@ -442,25 +516,108 @@ export class SinarIlmuApiClient {
 
   // Enhanced fallback responses
   getFallbackResponse(message: string): string {
+    if (!message || typeof message !== 'string') {
+      return "Halo! Saya Garuda, siap membantu kamu belajar! 🎓 Tanya saja tentang Matematika, IPA, IPS, atau hal menarik lainnya. Apa yang ingin kamu pelajari hari ini?";
+    }
+
     const lowerMessage = message.toLowerCase();
     
-    if (lowerMessage.includes('matematika') || lowerMessage.includes('hitung')) {
-      return "Matematika itu seru! 🔢 Saya bisa bantu dengan penjumlahan, pengurangan, perkalian, pembagian, dan soal cerita. Mau belajar topik mana dulu?";
+    // Math expressions
+    if (/\d+\s*[+\-*/]\s*\d+/.test(message)) {
+      try {
+        // Simple math evaluation
+        const sanitized = message.replace(/[^0-9+\-*/().\s]/g, '');
+        if (sanitized.length > 0 && sanitized.length < 50) {
+          // eslint-disable-next-line no-eval
+          const result = eval(sanitized);
+          if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+            return `🔢 Hasil dari ${message} adalah ${result}`;
+          }
+        }
+      } catch (error) {
+        // Fall through to regular math response
+      }
+    }
+    
+    if (lowerMessage.includes('matematika') || lowerMessage.includes('hitung') || lowerMessage.includes('mtk')) {
+      return `🔢 **Matematika itu Seru!**
+
+Saya bisa bantu kamu dengan:
+• Penjumlahan, pengurangan, perkalian, pembagian
+• Soal cerita yang menarik
+• Konsep geometri dasar
+• Tips menghitung cepat
+
+Mau belajar topik mana dulu? Atau langsung tanya soal matematika yang ingin diselesaikan! 📚`;
     }
     
     if (lowerMessage.includes('ipa') || lowerMessage.includes('sains')) {
-      return "IPA penuh dengan hal menarik! 🔬 Mari belajar tentang alam, hewan, tumbuhan, atau eksperimen sederhana yang bisa kamu coba di rumah!";
+      return `🔬 **IPA Penuh Keajaiban!**
+
+Mari belajar tentang:
+• Alam dan lingkungan sekitar
+• Hewan dan tumbuhan
+• Eksperimen sederhana
+• Fenomena alam yang menarik
+
+Apa yang ingin kamu ketahui tentang dunia sains? Saya siap menjelaskan dengan cara yang menyenangkan! 🌟`;
     }
     
-    if (lowerMessage.includes('ips') || lowerMessage.includes('indonesia')) {
-      return "Ayo belajar tentang Indonesia! 🇮🇩 Saya bisa ceritakan tentang budaya, sejarah, atau keunikan daerah di Indonesia yang membanggakan!";
+    if (lowerMessage.includes('ips') || lowerMessage.includes('indonesia') || lowerMessage.includes('sejarah')) {
+      return `🇮🇩 **Ayo Belajar tentang Indonesia!**
+
+Saya bisa ceritakan tentang:
+• Kebudayaan Indonesia yang beragam
+• Sejarah pahlawan nasional
+• Keunikan daerah di Indonesia
+• Nilai-nilai Pancasila
+
+Indonesia negara yang luar biasa! Mau tahu tentang apa? 🏛️`;
     }
     
-    if (lowerMessage.includes('sinarilmu') || lowerMessage.includes('platform')) {
-      return "SinarIlmu adalah platform pembelajaran digital terbaik untuk Desa Cerdas! 💻 Kami melayani 813 siswa di 4 SDN dengan teknologi modern dan sudah terbukti meningkatkan nilai siswa rata-rata 23 persen!";
+    if (lowerMessage.includes('sinarilmu') || lowerMessage.includes('platform') || lowerMessage.includes('garuda')) {
+      return `🏫 **SinarIlmu - Platform Kebanggaan!**
+
+SinarIlmu adalah platform pembelajaran digital terbaik untuk Desa Cerdas!
+
+✨ **Pencapaian Membanggakan:**
+• Melayani 813 siswa di 4 SDN
+• 92% siswa aktif menggunakan platform
+• Nilai siswa meningkat rata-rata 23%
+• 95% guru terbantu dengan platform
+
+Berlokasi di Desa Pliken, Banyumas, Jawa Tengah - kami bangga menjadi bagian transformasi pendidikan Indonesia! 🚀`;
     }
     
-    return "Halo! Saya Garuda, siap membantu kamu belajar! 🎓 Tanya saja tentang Matematika, IPA, IPS, atau hal menarik lainnya. Apa yang ingin kamu pelajari hari ini?";
+    // General greeting and introduction
+    if (lowerMessage.includes('halo') || lowerMessage.includes('hai') || lowerMessage.includes('siapa')) {
+      return `👋 **Halo! Saya Garuda AI**
+
+Saya adalah asisten pembelajaran digital SinarIlmu yang siap membantu kamu belajar dengan menyenangkan!
+
+🎯 **Yang Bisa Saya Bantu:**
+• 🔢 Matematika - Hitung-menghitung seru
+• 🔬 IPA - Sains yang menakjubkan
+• 🌏 IPS - Indonesia yang membanggakan
+• 💡 Pengetahuan umum lainnya
+
+Tanya apa saja yang ingin kamu pelajari hari ini! 📚✨`;
+    }
+    
+    // Default fallback
+    return `💡 **Pertanyaan Menarik!**
+
+Saya belum bisa memberikan jawaban yang tepat, tapi saya siap membantu dengan:
+
+📚 **Mata Pelajaran:**
+• Matematika - Hitung-menghitung dan soal cerita
+• IPA - Sains menarik dan eksperimen
+• IPS - Indonesia yang membanggakan
+
+💬 **Cara Bertanya:**
+Sebutkan mata pelajaran dan topik yang ingin kamu pelajari!
+
+Coba tanya tentang hal-hal di atas ya! 🌟`;
   }
 
   // Retry mechanism for failed requests
@@ -471,16 +628,39 @@ export class SinarIlmuApiClient {
     attemptNumber: number = 1
   ): Promise<ApiResponse> {
     try {
-      return await this.makeGrokRequest(message, context, options);
-    } catch (error) {
-      if (attemptNumber < GROK_API_CONFIG.retry.maxAttempts) {
+      const result = await this.makeGrokRequest(message, context, options);
+      
+      // If request failed but it's not the last attempt, retry
+      if (!result.success && attemptNumber < GROK_API_CONFIG.retry.maxAttempts) {
         const delay = GROK_API_CONFIG.retry.initialDelay * Math.pow(GROK_API_CONFIG.retry.backoffMultiplier, attemptNumber - 1);
-        console.log(`🔄 Retrying request in ${delay}ms (attempt ${attemptNumber + 1})`);
+        
+        if (this.isDev) {
+          console.log(`🔄 Retrying request in ${delay}ms (attempt ${attemptNumber + 1})`);
+        }
         
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.makeRequestWithRetry(message, context, options, attemptNumber + 1);
       }
-      throw error;
+      
+      return result;
+    } catch (error) {
+      if (attemptNumber < GROK_API_CONFIG.retry.maxAttempts) {
+        const delay = GROK_API_CONFIG.retry.initialDelay * Math.pow(GROK_API_CONFIG.retry.backoffMultiplier, attemptNumber - 1);
+        
+        if (this.isDev) {
+          console.log(`🔄 Retrying request in ${delay}ms (attempt ${attemptNumber + 1})`);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.makeRequestWithRetry(message, context, options, attemptNumber + 1);
+      }
+      
+      // If all retries failed, return fallback
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        response: this.getFallbackResponse(message)
+      };
     }
   }
 }
